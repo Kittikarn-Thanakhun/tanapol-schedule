@@ -152,12 +152,18 @@ button{font-family:inherit;cursor:pointer}
 .color-swatch.selected{border-color:var(--text);transform:scale(1.15)}
 .divider{height:1px;background:var(--border);margin:12px 0}
 
+/* Mobile dots */
+.mobile-dots{display:none;flex-wrap:wrap;gap:3px;margin-top:3px}
+.mdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.mdot-more{font-size:9px;color:var(--text3);font-weight:600;line-height:9px}
+
 /* Responsive */
 @media(max-width:640px){
   .stats-grid{grid-template-columns:repeat(3,1fr)}
   .dc{min-height:70px;padding:4px}
   .task-chip{display:none}
-  .more-chip{display:block}
+  .more-chip{display:none}
+  .mobile-dots{display:flex}
 }
 </style>
 </head>
@@ -480,6 +486,10 @@ function buildCal(){
         </div>`;
       }).join('')}
       ${extra>0?`<div class="more-chip">+${extra} งาน</div>`:''}
+      <div class="mobile-dots">
+        ${shown.map(t=>{const pe=getPerson(t.p);return`<div class="mdot${t.done?' done-chip':''}" style="background:${pe.dot};opacity:${t.done?.4:1}" title="${pe.name}: ${t.j}"></div>`;}).join('')}
+        ${extra>0?`<span class="mdot-more">+${extra}</span>`:''}
+      </div>
     </div>`;
   }
   const endDow=new Date(2025,curMonth,dim).getDay();
