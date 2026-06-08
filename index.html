@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>ตารางงานทีม 2025</title>
+<title>ตารางงานทีม 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
@@ -32,7 +32,7 @@ button{font-family:inherit;cursor:pointer}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);font-size:13px;font-weight:500;color:var(--text);transition:all .15s;white-space:nowrap}
 .btn:hover{background:var(--surface2)}
 .btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}
-.btn-primary:hover{background:#1450890;opacity:.9}
+.btn-primary:hover{opacity:.9}
 .btn-icon{width:34px;height:34px;padding:0;justify-content:center;font-size:16px}
 
 /* ── Month tabs ── */
@@ -101,9 +101,15 @@ button{font-family:inherit;cursor:pointer}
 .form-group select,.form-group input[type=text],.form-group input[type=date]{width:100%;font-size:13px;border-radius:var(--radius-sm);border:1px solid var(--border2);padding:9px 12px;background:var(--surface);color:var(--text);font-family:inherit;transition:border-color .15s}
 .form-group select:focus,.form-group input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,.12)}
 
+/* Person picker (multi-select chips) */
+.person-picker{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.picker-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:var(--radius-pill);border:2px solid var(--border2);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;color:var(--text2);background:var(--surface);user-select:none}
+.picker-chip.sel{color:#fff}
+
 /* Task list in day modal */
 .task-list{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
 .task-row{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:var(--radius-sm)}
+.task-badges{display:flex;flex-wrap:wrap;gap:3px;flex-shrink:0}
 .task-person-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:var(--radius-pill);flex-shrink:0}
 .task-job{font-size:13px;color:var(--text);flex:1;line-height:1.4}
 .task-job.done-text{text-decoration:line-through;opacity:.45}
@@ -118,7 +124,7 @@ button{font-family:inherit;cursor:pointer}
 
 /* Person modal */
 .person-modal-inner{width:500px;max-width:100%}
-.person-banner{height:6px;border-radius:var(--radius) var(--radius) 0 0;margin:-0px}
+.person-banner{height:6px;border-radius:var(--radius) var(--radius) 0 0}
 .person-hero{display:flex;align-items:center;gap:14px;padding:1.25rem 1.25rem .75rem;border-bottom:1px solid var(--border)}
 .person-avatar-lg{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;flex-shrink:0}
 .person-hero-info h3{font-size:18px;font-weight:700;color:var(--text)}
@@ -146,7 +152,6 @@ button{font-family:inherit;cursor:pointer}
 .people-item-count{font-size:11px;color:var(--text2)}
 .del-person-btn{padding:4px 10px;border-radius:var(--radius-pill);border:1px solid #FFCDD2;background:transparent;color:var(--red);font-size:11px;font-weight:600;transition:all .15s}
 .del-person-btn:hover{background:#FEECEC}
-.del-person-btn:disabled{opacity:.3;cursor:not-allowed}
 .color-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .color-swatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s}
 .color-swatch.selected{border-color:var(--text);transform:scale(1.15)}
@@ -176,7 +181,7 @@ button{font-family:inherit;cursor:pointer}
       <div class="logo">📅</div>
       <div>
         <div class="header-title">ตารางงานทีม</div>
-        <div class="header-sub">2025</div>
+        <div class="header-sub" id="headerYear"></div>
       </div>
     </div>
     <div class="header-actions">
@@ -215,8 +220,8 @@ button{font-family:inherit;cursor:pointer}
     <div class="add-section">
       <div class="add-section-title">➕ เพิ่มงานใหม่</div>
       <div class="form-group">
-        <label>ชื่อ</label>
-        <select id="dlgPerson"></select>
+        <label>ผู้รับผิดชอบ <span style="color:var(--text3);font-weight:400">(เลือกได้หลายคน)</span></label>
+        <div id="dlgPersonPicker" class="person-picker"></div>
       </div>
       <div class="form-group">
         <label>วันที่</label>
@@ -287,7 +292,13 @@ const HOL={
   "2025-05-01":"วันแรงงาน","2025-05-04":"ฉัตรมงคล","2025-05-12":"วิสาขบูชา",
   "2025-06-03":"เฉลิมพระชนมพรรษา","2025-07-10":"อาสาฬหบูชา","2025-07-11":"เข้าพรรษา",
   "2025-07-28":"วันราชินี","2025-08-12":"วันแม่","2025-10-13":"สวรรคต ร.9",
-  "2025-10-23":"ปิยมหาราช","2025-12-05":"วันพ่อ","2025-12-10":"รัฐธรรมนูญ","2025-12-31":"สิ้นปี"
+  "2025-10-23":"ปิยมหาราช","2025-12-05":"วันพ่อ","2025-12-10":"รัฐธรรมนูญ","2025-12-31":"สิ้นปี",
+  "2026-01-01":"ขึ้นปีใหม่","2026-03-02":"มาฆบูชา","2026-04-06":"วันจักรี",
+  "2026-04-13":"สงกรานต์","2026-04-14":"สงกรานต์","2026-04-15":"สงกรานต์",
+  "2026-05-01":"วันแรงงาน","2026-05-04":"ฉัตรมงคล","2026-05-21":"วิสาขบูชา",
+  "2026-06-03":"เฉลิมพระชนมพรรษา","2026-07-20":"อาสาฬหบูชา","2026-07-21":"เข้าพรรษา",
+  "2026-07-28":"วันราชินี","2026-08-12":"วันแม่","2026-10-13":"สวรรคต ร.9",
+  "2026-10-23":"ปิยมหาราช","2026-12-05":"วันพ่อ","2026-12-10":"รัฐธรรมนูญ","2026-12-31":"สิ้นปี"
 };
 const MTH_TH=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const MTH_SH=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
@@ -307,14 +318,6 @@ function lightBg(dot,a=0.12){
   const {r,g,b}=hexToRgb(dot);
   return`rgba(${r},${g},${b},${a})`;
 }
-function darkTx(dot){
-  const {r,g,b}=hexToRgb(dot);
-  const lum=(0.299*r+0.587*g+0.114*b)/255;
-  if(lum>0.5){
-    return `color-mix(in srgb,${dot} 80%,black)`;
-  }
-  return dot;
-}
 
 /* ── Default people ── */
 const DEFAULT_PEOPLE=[
@@ -326,62 +329,36 @@ const DEFAULT_PEOPLE=[
   {id:"Me",   name:"ฉัน",  dot:"#534AB7"},
 ];
 const PRESET=[
-  {date:"2025-05-01",p:"Guy",j:"BIZIncome ep.7 เชลล์ชวนชิม",done:false},
-  {date:"2025-05-01",p:"Preem",j:"ฉันถามมติ ep.",done:false},
-  {date:"2025-05-02",p:"Guy",j:"(HL)BIZIncome ep.7",done:false},
-  {date:"2025-05-03",p:"Nest",j:"whobuzz – ปอม",done:false},
-  {date:"2025-05-04",p:"Guy",j:"Pressing 5",done:false},
-  {date:"2025-05-04",p:"Tee",j:"งาน MuStation",done:false},
-  {date:"2025-05-05",p:"Tee",j:"งาน MuStation",done:false},
-  {date:"2025-05-05",p:"Nest",j:"Trendy – twenty wendy",done:false},
-  {date:"2025-05-06",p:"Preem",j:"การเมืองคลิปละคำ 24",done:false},
-  {date:"2025-05-06",p:"Tee",j:"งาน ลูกค้า tiktok",done:false},
-  {date:"2025-05-07",p:"Tee",j:"งาน MuStation",done:false},
-  {date:"2025-05-07",p:"Nest",j:"Trendy – Met Gala",done:false},
-  {date:"2025-05-08",p:"Tee",j:"InGlobe INTERVIEWS",done:false},
-  {date:"2025-05-09",p:"Preem",j:"ฉันถามมติ ep.",done:false},
-  {date:"2025-05-10",p:"Nest",j:"whobuzz – เทศน์",done:false},
-  {date:"2025-05-11",p:"Hardy",j:"RBK Rayong",done:false},
-  {date:"2025-05-11",p:"Guy",j:"Pressing 6",done:false},
-  {date:"2025-05-12",p:"Hardy",j:"Pressing",done:false},
-  {date:"2025-05-12",p:"Nest",j:"Trendy",done:false},
-  {date:"2025-05-12",p:"Tee",j:"งาน MuStation",done:false},
-  {date:"2025-05-13",p:"Tee",j:"การเมืองคลิปละคำ 27",done:false},
-  {date:"2025-05-13",p:"Tee",j:"งาน ลูกค้า tiktok",done:false},
-  {date:"2025-05-14",p:"Nest",j:"Trendy",done:false},
-  {date:"2025-05-14",p:"Tee",j:"InGlobe HL",done:false},
-  {date:"2025-05-15",p:"Nest",j:"UIH",done:false},
-  {date:"2025-05-15",p:"Tee",j:"UIH Interview",done:false},
-  {date:"2025-05-15",p:"Hardy",j:"One Bangkok",done:false},
-  {date:"2025-05-16",p:"Tee",j:"งาน MuStation",done:false},
-  {date:"2025-05-16",p:"Preem",j:"ฉันถามมติ ep.",done:false},
-  {date:"2025-05-17",p:"Nest",j:"whobuzz – เฉินซิงซวี่",done:false},
-  {date:"2025-05-18",p:"Guy",j:"Pressing 7",done:false},
-  {date:"2025-05-19",p:"Nest",j:"Trendy",done:false},
-  {date:"2025-05-19",p:"Hardy",j:"magic move ทำนายรัก",done:false},
-  {date:"2025-05-19",p:"Tee",j:"งาน ลูกค้า tiktok",done:false},
-  {date:"2025-05-20",p:"Tee",j:"การเมืองคลิปละคำ 25",done:false},
-  {date:"2025-05-21",p:"Hardy",j:"Trendy",done:false},
-  {date:"2025-05-21",p:"Nest",j:"UIH",done:false},
-  {date:"2025-05-22",p:"Nest",j:"UIH",done:false},
-  {date:"2025-05-23",p:"Preem",j:"ฉันถามมติ ep.",done:false},
-  {date:"2025-05-24",p:"Tee",j:"whobuzz",done:false},
-  {date:"2025-05-25",p:"Hardy",j:"Sport News, One Bangkok",done:false},
-  {date:"2025-05-25",p:"Guy",j:"Pressing 8",done:false},
-  {date:"2025-05-26",p:"Hardy",j:"Pressing",done:false},
-  {date:"2025-05-26",p:"Nest",j:"Trendy",done:false},
-  {date:"2025-05-26",p:"Tee",j:"งาน ลูกค้า tiktok",done:false},
-  {date:"2025-05-27",p:"Nest",j:"การเมืองคลิปละคำ 26",done:false},
-  {date:"2025-05-28",p:"Tee",j:"Trendy",done:false},
-  {date:"2025-05-31",p:"Tee",j:"whobuzz",done:false},
+  {date:"2025-05-01",p:["Guy"],j:"BIZIncome ep.7 เชลล์ชวนชิม",done:false},
+  {date:"2025-05-01",p:["Preem"],j:"ฉันถามมติ ep.",done:false},
+  {date:"2025-05-02",p:["Guy"],j:"(HL)BIZIncome ep.7",done:false},
+  {date:"2025-05-03",p:["Nest"],j:"whobuzz – ปอม",done:false},
+  {date:"2025-05-04",p:["Guy"],j:"Pressing 5",done:false},
+  {date:"2025-05-04",p:["Tee"],j:"งาน MuStation",done:false},
+  {date:"2025-05-05",p:["Tee"],j:"งาน MuStation",done:false},
+  {date:"2025-05-05",p:["Nest"],j:"Trendy – twenty wendy",done:false},
+  {date:"2025-05-06",p:["Preem"],j:"การเมืองคลิปละคำ 24",done:false},
+  {date:"2025-05-06",p:["Tee"],j:"งาน ลูกค้า tiktok",done:false},
+  {date:"2025-05-07",p:["Tee"],j:"งาน MuStation",done:false},
+  {date:"2025-05-07",p:["Nest"],j:"Trendy – Met Gala",done:false},
+  {date:"2025-05-08",p:["Tee"],j:"InGlobe INTERVIEWS",done:false},
+  {date:"2025-05-09",p:["Preem"],j:"ฉันถามมติ ep.",done:false},
+  {date:"2025-05-10",p:["Nest"],j:"whobuzz – เทศน์",done:false},
+  {date:"2025-05-11",p:["Hardy"],j:"RBK Rayong",done:false},
+  {date:"2025-05-11",p:["Guy"],j:"Pressing 6",done:false},
+  {date:"2025-05-12",p:["Hardy"],j:"Pressing",done:false},
+  {date:"2025-05-12",p:["Nest"],j:"Trendy",done:false},
+  {date:"2025-05-12",p:["Tee"],j:"งาน MuStation",done:false},
 ];
 
 /* ── State ── */
 let people=[];
 let tasks=[];
 let curMonth=new Date().getMonth();
+const curYear=new Date().getFullYear();
 let curFilter="all";
 let selectedColor=PALETTE[0];
+let selectedPeople=[];
 
 /* ── Storage ── */
 function load(){
@@ -390,8 +367,13 @@ function load(){
     people=p?JSON.parse(p):DEFAULT_PEOPLE.map(x=>({...x}));
     const t=localStorage.getItem("sched_tasks_v1");
     tasks=t?JSON.parse(t):PRESET.map(x=>({...x}));
-    if(!t) save();
-  }catch{people=DEFAULT_PEOPLE.map(x=>({...x}));tasks=PRESET.map(x=>({...x}));}
+    /* migrate: convert p from string to array */
+    tasks=tasks.map(task=>({...task,p:Array.isArray(task.p)?task.p:[task.p]}));
+    if(!t)save();
+  }catch{
+    people=DEFAULT_PEOPLE.map(x=>({...x}));
+    tasks=PRESET.map(x=>({...x}));
+  }
 }
 function save(){
   try{
@@ -402,12 +384,17 @@ function save(){
 function getPerson(id){return people.find(p=>p.id===id)||{name:id,dot:"#999"};}
 
 /* ── Helpers ── */
+function pArr(t){return Array.isArray(t.p)?t.p:[t.p];}
 function ds(y,m,d){return`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
-function daysIn(m){return new Date(2025,m+1,0).getDate();}
+function daysIn(m){return new Date(curYear,m+1,0).getDate();}
 function initials(name){return name.slice(0,1).toUpperCase();}
 
 /* ── Build UI ── */
-function buildAll(){buildTabs();buildTeamBar();buildStats();buildCal();}
+function buildAll(){
+  document.getElementById("headerYear").textContent=curYear;
+  document.title=`ตารางงานทีม ${curYear}`;
+  buildTabs();buildTeamBar();buildStats();buildCal();
+}
 
 function buildTabs(){
   document.getElementById("monthTabs").innerHTML=MTH_SH.map((s,i)=>
@@ -436,9 +423,11 @@ function buildStats(){
   const counts={},dones={};
   people.forEach(p=>{counts[p.id]=0;dones[p.id]=0;});
   for(let d=1;d<=dim;d++){
-    const date=ds(2025,curMonth,d);
+    const date=ds(curYear,curMonth,d);
     tasks.filter(t=>t.date===date).forEach(t=>{
-      if(counts[t.p]!==undefined){counts[t.p]++;if(t.done)dones[t.p]++;}
+      pArr(t).forEach(pid=>{
+        if(counts[pid]!==undefined){counts[pid]++;if(t.done)dones[pid]++;}
+      });
     });
   }
   document.getElementById("statsGrid").innerHTML=people.map(p=>{
@@ -459,17 +448,17 @@ function buildCal(){
   const today=new Date();
   const todayStr=ds(today.getFullYear(),today.getMonth(),today.getDate());
   const dim=daysIn(curMonth);
-  const startDow=new Date(2025,curMonth,1).getDay();
+  const startDow=new Date(curYear,curMonth,1).getDay();
   let html=DAYS_H.map((d,i)=>`<div class="dh${i===0?' sun':i===6?' sat':''}">${d}</div>`).join("");
   for(let i=0;i<startDow;i++) html+=`<div class="dc off"></div>`;
   for(let d=1;d<=dim;d++){
-    const date=ds(2025,curMonth,d);
-    const dow=new Date(2025,curMonth,d).getDay();
+    const date=ds(curYear,curMonth,d);
+    const dow=new Date(curYear,curMonth,d).getDay();
     const isWknd=dow===0||dow===6;
     const isHol=!!HOL[date];
     const isToday=date===todayStr;
     const dayTasks=tasks.filter(t=>t.date===date);
-    const visible=curFilter==="all"?dayTasks:dayTasks.filter(t=>t.p===curFilter);
+    const visible=curFilter==="all"?dayTasks:dayTasks.filter(t=>pArr(t).includes(curFilter));
     const shown=visible.slice(0,3);
     const extra=visible.length-3;
     const cls=`dc${isHol?' hol':''}${isToday?' today-cell':''}${isWknd&&!isHol?' hol':''}`;
@@ -479,44 +468,72 @@ function buildCal(){
         ${isHol?`<span class="hbadge">${HOL[date]}</span>`:''}
       </div>
       ${shown.map(t=>{
-        const pe=getPerson(t.p);
+        const pa=pArr(t);
+        const peList=pa.map(pid=>getPerson(pid));
+        const mainPe=peList[0];
+        const namesStr=peList.map(pe=>pe.name).join('+');
         return`<div class="task-chip${t.done?' done-chip':''}"
-          style="background:${lightBg(pe.dot)};color:${pe.dot}">
-          ${t.p==='Me'?'ฉัน':pe.name} – ${t.j}
+          style="background:${lightBg(mainPe.dot)};color:${mainPe.dot}">
+          ${namesStr} – ${t.j}
         </div>`;
       }).join('')}
       ${extra>0?`<div class="more-chip">+${extra} งาน</div>`:''}
       <div class="mobile-dots">
-        ${shown.map(t=>{const pe=getPerson(t.p);return`<div class="mdot${t.done?' done-chip':''}" style="background:${pe.dot};opacity:${t.done?.4:1}" title="${pe.name}: ${t.j}"></div>`;}).join('')}
+        ${shown.map(t=>{const pe=getPerson(pArr(t)[0]);return`<div class="mdot${t.done?' done-chip':''}" style="background:${pe.dot};opacity:${t.done?.4:1}" title="${pArr(t).map(id=>getPerson(id).name).join(', ')}: ${t.j}"></div>`;}).join('')}
         ${extra>0?`<span class="mdot-more">+${extra}</span>`:''}
       </div>
     </div>`;
   }
-  const endDow=new Date(2025,curMonth,dim).getDay();
+  const endDow=new Date(curYear,curMonth,dim).getDay();
   for(let i=0;i<(endDow<6?6-endDow:0);i++) html+=`<div class="dc off"></div>`;
   document.getElementById("calGrid").innerHTML=html;
 }
 
 /* ── Navigation ── */
 function goMonth(m){curMonth=m;buildAll();}
-function setFilter(f,btn){
-  curFilter=f;
-  buildTeamBar();buildCal();
+function setFilter(f){curFilter=f;buildTeamBar();buildCal();}
+
+/* ── Person picker ── */
+function buildPersonPicker(){
+  const el=document.getElementById("dlgPersonPicker");
+  if(!el)return;
+  el.innerHTML=people.map(p=>{
+    const isSel=selectedPeople.includes(p.id);
+    return`<div class="picker-chip${isSel?' sel':''}"
+      style="${isSel?`background:${p.dot};border-color:${p.dot}`:`border-color:${p.dot}55`}"
+      onclick="togglePickerPerson('${p.id}',this)"
+      data-pid="${p.id}">
+      <span class="chip-dot" style="background:${isSel?'#fff':p.dot}"></span>${p.name}
+    </div>`;
+  }).join("");
+}
+function togglePickerPerson(pid,el){
+  const pe=getPerson(pid);
+  if(selectedPeople.includes(pid)){
+    selectedPeople=selectedPeople.filter(id=>id!==pid);
+    el.classList.remove('sel');
+    el.style.background='';
+    el.style.borderColor=pe.dot+'55';
+    el.querySelector('.chip-dot').style.background=pe.dot;
+  }else{
+    selectedPeople.push(pid);
+    el.classList.add('sel');
+    el.style.background=pe.dot;
+    el.style.borderColor=pe.dot;
+    el.querySelector('.chip-dot').style.background='#fff';
+  }
 }
 
 /* ── Day modal ── */
 function openDay(date){
-  const [,m,d]=date.split("-");
-  document.getElementById("dlgTitle").textContent=`${parseInt(d)} ${MTH_TH[parseInt(m)-1]} 2568`;
+  const [yr,m,d]=date.split("-");
+  document.getElementById("dlgTitle").textContent=`${parseInt(d)} ${MTH_TH[parseInt(m)-1]} ${parseInt(yr)+543}`;
   document.getElementById("dlgDate").value=date;
   document.getElementById("dlgJob").value="";
-  rebuildPersonSelect("dlgPerson");
+  if(selectedPeople.length===0&&people.length>0) selectedPeople=[people[0].id];
+  buildPersonPicker();
   renderDlgTasks(date);
   openModal("dayOverlay");
-}
-function rebuildPersonSelect(elId){
-  document.getElementById(elId).innerHTML=people.map(p=>
-    `<option value="${p.id}">${p.name}</option>`).join("");
 }
 function renderDlgTasks(date){
   const dayTasks=tasks.filter(t=>t.date===date);
@@ -526,10 +543,13 @@ function renderDlgTasks(date){
     return;
   }
   el.innerHTML=dayTasks.map(t=>{
-    const pe=getPerson(t.p);
+    const pa=pArr(t);
+    const peList=pa.map(pid=>getPerson(pid));
+    const mainPe=peList[0];
     const idx=tasks.indexOf(t);
-    return`<div class="task-row" style="background:${lightBg(pe.dot,.1)}">
-      <span class="task-person-badge" style="background:${pe.dot};color:#fff">${pe.name}</span>
+    const badgesHtml=peList.map(pe=>`<span class="task-person-badge" style="background:${pe.dot};color:#fff">${pe.name}</span>`).join('');
+    return`<div class="task-row" style="background:${lightBg(mainPe.dot,.1)}">
+      <div class="task-badges">${badgesHtml}</div>
       <span class="task-job${t.done?' done-text':''}">${t.j}</span>
       <button class="done-btn ${t.done?'is-done':'undone'}" onclick="toggleDone(${idx},'${date}')">
         ${t.done?'✓ เสร็จ':'เสร็จ?'}
@@ -548,11 +568,12 @@ function openAdd(){
   openDay(ds(t.getFullYear(),t.getMonth(),t.getDate()));
 }
 function saveTask(){
-  const p=document.getElementById("dlgPerson").value;
   const date=document.getElementById("dlgDate").value;
   const j=document.getElementById("dlgJob").value.trim();
   if(!date||!j){alert("กรุณากรอกวันที่และรายละเอียดงาน");return;}
-  tasks.push({date,p,j,done:false});save();
+  if(selectedPeople.length===0){alert("กรุณาเลือกผู้รับผิดชอบอย่างน้อย 1 คน");return;}
+  tasks.push({date,p:[...selectedPeople],j,done:false});
+  save();
   document.getElementById("dlgJob").value="";
   renderDlgTasks(date);buildStats();buildCal();
 }
@@ -564,13 +585,13 @@ function openPerson(pid){
   document.getElementById("personAvatar").style.background=pe.dot;
   document.getElementById("personAvatar").textContent=initials(pe.name);
   document.getElementById("personNameEl").textContent=pe.name;
-  document.getElementById("personMonthEl").textContent=`${MTH_TH[curMonth]} 2025`;
+  document.getElementById("personMonthEl").textContent=`${MTH_TH[curMonth]} ${curYear}`;
 
   const dim=daysIn(curMonth);
   const groups=[];
   for(let d=1;d<=dim;d++){
-    const date=ds(2025,curMonth,d);
-    const dt=tasks.filter(t=>t.date===date&&t.p===pid);
+    const date=ds(curYear,curMonth,d);
+    const dt=tasks.filter(t=>t.date===date&&pArr(t).includes(pid));
     if(dt.length) groups.push({date,d,tasks:dt});
   }
   const total=groups.reduce((a,g)=>a+g.tasks.length,0);
@@ -584,14 +605,16 @@ function openPerson(pid){
   const list=document.getElementById("personTaskList");
   if(!groups.length){
     list.innerHTML=`<div class="empty-state"><div class="empty-state-icon">📭</div><p>ไม่มีงานในเดือนนี้</p></div>`;
-  } else {
+  }else{
     list.innerHTML=groups.map(g=>`
       <div class="day-group">
         <div class="day-group-label">${g.d} ${MTH_TH[curMonth]}</div>
         ${g.tasks.map(t=>{
           const idx=tasks.indexOf(t);
+          const coList=pArr(t).filter(id=>id!==pid).map(id=>getPerson(id));
+          const coHtml=coList.length?` <span style="font-size:10px;color:var(--text3)">+${coList.map(p=>p.name).join(', ')}</span>`:'';
           return`<div class="ptask-row" style="background:${lightBg(pe.dot,.1)}">
-            <span class="ptask-text${t.done?' done-text':''}">${t.j}</span>
+            <span class="ptask-text${t.done?' done-text':''}">${t.j}${coHtml}</span>
             <button class="done-btn ${t.done?'is-done':'undone'}"
               onclick="toggleDonePerson(${idx},'${pid}')">
               ${t.done?'✓ เสร็จ':'เสร็จ?'}
@@ -613,13 +636,13 @@ function openTeamManager(){
 function renderPeopleList(){
   const el=document.getElementById("peopleList");
   el.innerHTML=people.map(p=>{
-    const cnt=tasks.filter(t=>t.p===p.id).length;
+    const cnt=tasks.filter(t=>pArr(t).includes(p.id)).length;
     return`<div class="people-item">
       <span class="people-item-dot" style="background:${p.dot}"></span>
       <span class="people-item-name">${p.name}</span>
       <span class="people-item-count">${cnt} งาน</span>
       <button class="del-person-btn" onclick="removePerson('${p.id}')"
-        ${cnt>0?`title="มีงานอยู่ ${cnt} งาน — ลบจะลบงานด้วย"`:''}>ลบออก</button>
+        ${cnt>0?`title="มีงานอยู่ ${cnt} งาน"`:''}>ลบออก</button>
     </div>`;
   }).join("");
 }
@@ -651,12 +674,22 @@ function addPerson(){
 }
 function removePerson(pid){
   const pe=getPerson(pid);
-  const cnt=tasks.filter(t=>t.p===pid).length;
-  const msg=cnt>0
-    ?`ลบ "${pe.name}" ออกจากทีม?\n\nมีงาน ${cnt} รายการที่จะถูกลบด้วย`
-    :`ลบ "${pe.name}" ออกจากทีมใช่ไหม?`;
+  const assigned=tasks.filter(t=>pArr(t).includes(pid));
+  const soloCnt=assigned.filter(t=>pArr(t).length===1).length;
+  const multiCnt=assigned.length-soloCnt;
+  let msg=`ลบ "${pe.name}" ออกจากทีมใช่ไหม?`;
+  if(assigned.length>0){
+    if(soloCnt>0) msg+=`\n\n• งาน ${soloCnt} รายการที่รับผิดชอบคนเดียว → จะถูกลบ`;
+    if(multiCnt>0) msg+=`\n• งาน ${multiCnt} รายการที่รับผิดชอบร่วมกัน → ยังคงอยู่`;
+  }
   if(!confirm(msg))return;
-  tasks=tasks.filter(t=>t.p!==pid);
+  tasks=tasks.map(t=>{
+    const pa=pArr(t);
+    if(!pa.includes(pid))return t;
+    const newP=pa.filter(id=>id!==pid);
+    if(newP.length===0)return null;
+    return{...t,p:newP};
+  }).filter(Boolean);
   people=people.filter(p=>p.id!==pid);
   if(curFilter===pid)curFilter="all";
   save();renderPeopleList();buildAll();
