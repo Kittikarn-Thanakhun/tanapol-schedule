@@ -162,6 +162,13 @@ button{font-family:inherit;cursor:pointer}
 .mdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .mdot-more{font-size:9px;color:var(--text3);font-weight:600;line-height:9px}
 
+/* Sync status */
+.sync-status{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--radius-pill);background:var(--surface2);border:1px solid var(--border);white-space:nowrap}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#AEAEB2;flex-shrink:0;transition:background .3s}
+.sync-dot.online{background:#2E7D32}
+.sync-dot.offline{background:#D32F2F}
+.sync-label{font-size:11px;color:var(--text2)}
+
 /* Responsive */
 @media(max-width:640px){
   .stats-grid{grid-template-columns:repeat(3,1fr)}
@@ -183,6 +190,10 @@ button{font-family:inherit;cursor:pointer}
         <div class="header-title">ตารางงานทีม</div>
         <div class="header-sub" id="headerYear"></div>
       </div>
+    </div>
+    <div class="sync-status" id="syncStatus">
+      <div class="sync-dot" id="syncDot"></div>
+      <span class="sync-label" id="syncLabel">กำลังเชื่อมต่อ...</span>
     </div>
     <div class="header-actions">
       <button class="btn" onclick="openTeamManager()">👥 จัดการทีม</button>
@@ -284,7 +295,34 @@ button{font-family:inherit;cursor:pointer}
 </div>
 </div>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
 <script>
+/* ══ FIREBASE CONFIG ══
+   ขั้นตอนตั้งค่า (ทำครั้งเดียว):
+   1. ไปที่ https://console.firebase.google.com → sign in ด้วย Google
+   2. กด "Create a project" → ตั้งชื่อ → Continue จนเสร็จ
+   3. Project Overview → กด </> (Add Web App) → ตั้งชื่อ → Register app
+   4. Copy firebaseConfig ที่ปรากฏ แล้วแทนค่าด้านล่าง
+   5. ไปที่ Build → Realtime Database → Create database
+      → เลือก asia-southeast1 → เลือก "Start in test mode" → Enable
+   6. Deploy ไฟล์นี้ใหม่ → ทุกคนจะเห็นข้อมูลเดียวกันแบบ real-time!
+*/
+const firebaseConfig = {
+  apiKey: "AIzaSyBMVCvnyFH9-DkoKunBwKjtqbsFdnwcAFI",
+  authDomain: "team-schedule-48b8d.firebaseapp.com",
+  databaseURL: "https://team-schedule-48b8d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "team-schedule-48b8d",
+  storageBucket: "team-schedule-48b8d.firebasestorage.app",
+  messagingSenderId: "734504562676",
+  appId: "1:734504562676:web:12d1b993390ed4dbf693a1",
+  measurementId: "G-7NXR12TSYR"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 /* ══ Constants ══ */
 const HOL={
   "2025-01-01":"ขึ้นปีใหม่","2025-02-12":"มาฆบูชา","2025-04-06":"วันจักรี",
@@ -360,26 +398,42 @@ let curFilter="all";
 let selectedColor=PALETTE[0];
 let selectedPeople=[];
 
-/* ── Storage ── */
+/* ── Storage (Firebase Realtime Database) ── */
+let dbReady=false;
+function fbArr(val){
+  if(!val)return null;
+  if(Array.isArray(val))return val.filter(Boolean);
+  return Object.values(val).filter(Boolean);
+}
 function load(){
-  try{
-    const p=localStorage.getItem("sched_people_v1");
-    people=p?JSON.parse(p):DEFAULT_PEOPLE.map(x=>({...x}));
-    const t=localStorage.getItem("sched_tasks_v1");
-    tasks=t?JSON.parse(t):PRESET.map(x=>({...x}));
-    /* migrate: convert p from string to array */
-    tasks=tasks.map(task=>({...task,p:Array.isArray(task.p)?task.p:[task.p]}));
-    if(!t)save();
-  }catch{
-    people=DEFAULT_PEOPLE.map(x=>({...x}));
-    tasks=PRESET.map(x=>({...x}));
-  }
+  db.ref(".info/connected").on("value",snap=>{
+    const on=snap.val()===true;
+    const dot=document.getElementById("syncDot");
+    const lbl=document.getElementById("syncLabel");
+    if(dot)dot.className=`sync-dot${on?" online":" offline"}`;
+    if(lbl)lbl.textContent=on?"ออนไลน์":"ออฟไลน์";
+  });
+  db.ref("sched_v1").on("value",snapshot=>{
+    const data=snapshot.val();
+    if(data&&data.people&&data.tasks){
+      people=fbArr(data.people)||DEFAULT_PEOPLE.map(x=>({...x}));
+      tasks=(fbArr(data.tasks)||[]).map(task=>({...task,p:Array.isArray(task.p)?task.p:[task.p]}));
+    }else if(!dbReady){
+      people=DEFAULT_PEOPLE.map(x=>({...x}));
+      tasks=PRESET.map(x=>({...x}));
+      save();
+    }
+    dbReady=true;
+    buildAll();
+  },err=>{
+    console.error("Firebase error:",err);
+    const lbl=document.getElementById("syncLabel");
+    if(lbl)lbl.textContent="เชื่อมต่อไม่ได้ — ลองรีเพจ";
+  });
 }
 function save(){
-  try{
-    localStorage.setItem("sched_people_v1",JSON.stringify(people));
-    localStorage.setItem("sched_tasks_v1",JSON.stringify(tasks));
-  }catch{}
+  db.ref("sched_v1").set({people,tasks,updatedAt:Date.now()})
+    .catch(err=>console.error("Firebase save error:",err));
 }
 function getPerson(id){return people.find(p=>p.id===id)||{name:id,dot:"#999"};}
 
@@ -710,7 +764,7 @@ document.addEventListener("keydown",e=>{
 });
 
 /* ── Init ── */
-load();buildAll();
+load();
 </script>
 </body>
 </html>
