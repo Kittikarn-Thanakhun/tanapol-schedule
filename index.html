@@ -101,6 +101,12 @@ button{font-family:inherit;cursor:pointer}
 .form-group label{font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px}
 .form-group select,.form-group input[type=text],.form-group input[type=date]{width:100%;font-size:13px;border-radius:var(--radius-sm);border:1px solid var(--border2);padding:9px 12px;background:var(--surface);color:var(--text);font-family:inherit;transition:border-color .15s}
 .form-group select:focus,.form-group input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,.12)}
+.time-picker{display:inline-flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px;transition:border-color .15s;width:100%}
+.time-picker:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,.12)}
+.time-picker select{border:none;background:transparent;font-size:14px;font-weight:600;color:var(--text);font-family:inherit;cursor:pointer;padding:0;appearance:none;-webkit-appearance:none;text-align:center;flex:1}
+.time-picker select:focus{outline:none}
+.time-picker select.empty{color:var(--text3)}
+.time-colon{font-size:16px;font-weight:700;color:var(--border2);line-height:1;flex-shrink:0}
 
 /* Person picker (multi-select chips) */
 .person-picker{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
@@ -236,19 +242,36 @@ button{font-family:inherit;cursor:pointer}
         <label>ผู้รับผิดชอบ <span style="color:var(--text3);font-weight:400">(เลือกได้หลายคน)</span></label>
         <div id="dlgPersonPicker" class="person-picker"></div>
       </div>
-      <div class="form-group">
-        <label>วันที่</label>
-        <input type="date" id="dlgDate"/>
-      </div>
-      <div style="display:flex;gap:8px">
-        <div class="form-group" style="flex:1;margin-bottom:12px">
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div class="form-group" style="flex:1;margin-bottom:0">
+          <label>วันที่</label>
+          <input type="date" id="dlgDate"/>
+        </div>
+        <div class="form-group" style="flex:0 0 130px;margin-bottom:0">
           <label>เวลา <span style="color:var(--text3);font-weight:400">(ถ้ามี)</span></label>
-          <input type="time" id="dlgTime"/>
+          <div class="time-picker" id="dlgTimePicker">
+            <select id="dlgTimeHour" onchange="this.className=this.value?'':'empty'">
+              <option value="" class="empty">--</option>
+              <option>06</option><option>07</option><option>08</option><option>09</option>
+              <option>10</option><option>11</option><option>12</option><option>13</option>
+              <option>14</option><option>15</option><option>16</option><option>17</option>
+              <option>18</option><option>19</option><option>20</option><option>21</option>
+              <option>22</option><option>23</option><option>00</option><option>01</option>
+              <option>02</option><option>03</option><option>04</option><option>05</option>
+            </select>
+            <span class="time-colon">:</span>
+            <select id="dlgTimeMin">
+              <option value="00">00</option>
+              <option value="15">15</option>
+              <option value="30">30</option>
+              <option value="45">45</option>
+            </select>
+          </div>
         </div>
-        <div class="form-group" style="flex:2;margin-bottom:12px">
-          <label>สถานที่ <span style="color:var(--text3);font-weight:400">(ถ้ามี)</span></label>
-          <input type="text" id="dlgLoc" placeholder="เช่น สตูดิโอ, ออนไลน์"/>
-        </div>
+      </div>
+      <div class="form-group">
+        <label>สถานที่ <span style="color:var(--text3);font-weight:400">(ถ้ามี)</span></label>
+        <input type="text" id="dlgLoc" placeholder="เช่น สตูดิโอ, ออนไลน์"/>
       </div>
       <div class="form-group">
         <label>รายละเอียดงาน</label>
@@ -596,7 +619,9 @@ function openDay(date){
   document.getElementById("dlgTitle").textContent=`${parseInt(d)} ${MTH_TH[parseInt(m)-1]} ${parseInt(yr)+543}`;
   document.getElementById("dlgDate").value=date;
   document.getElementById("dlgJob").value="";
-  document.getElementById("dlgTime").value="";
+  document.getElementById("dlgTimeHour").value="";
+  document.getElementById("dlgTimeHour").className="empty";
+  document.getElementById("dlgTimeMin").value="00";
   document.getElementById("dlgLoc").value="";
   if(selectedPeople.length===0&&people.length>0) selectedPeople=[people[0].id];
   buildPersonPicker();
@@ -641,12 +666,16 @@ function saveTask(){
   const j=document.getElementById("dlgJob").value.trim();
   if(!date||!j){alert("กรุณากรอกวันที่และรายละเอียดงาน");return;}
   if(selectedPeople.length===0){alert("กรุณาเลือกผู้รับผิดชอบอย่างน้อย 1 คน");return;}
-  const time=document.getElementById("dlgTime").value;
+  const h=document.getElementById("dlgTimeHour").value;
+  const min=document.getElementById("dlgTimeMin").value;
+  const time=h?`${h}:${min}`:"";
   const loc=document.getElementById("dlgLoc").value.trim();
   tasks.push({date,p:[...selectedPeople],j,time,loc,done:false});
   save();
   document.getElementById("dlgJob").value="";
-  document.getElementById("dlgTime").value="";
+  document.getElementById("dlgTimeHour").value="";
+  document.getElementById("dlgTimeHour").className="empty";
+  document.getElementById("dlgTimeMin").value="00";
   document.getElementById("dlgLoc").value="";
   renderDlgTasks(date);buildStats();buildCal();
 }
