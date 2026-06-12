@@ -65,10 +65,10 @@ button{font-family:inherit;cursor:pointer}
 
 /* ── Calendar ── */
 .cal-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:110px}
 .dh{background:var(--surface2);padding:10px 4px;text-align:center;font-size:12px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border)}
 .dh.sun{color:#C0392B}.dh.sat{color:#534AB7}
-.dc{background:var(--surface);padding:7px;min-height:96px;display:flex;flex-direction:column;gap:3px;cursor:pointer;transition:background .1s;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.dc{background:var(--surface);padding:7px;height:110px;overflow:hidden;display:flex;flex-direction:column;gap:3px;cursor:pointer;transition:background .1s;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
 .dc:nth-child(7n){border-right:none}
 .dc:hover{background:#F0F4FF}
 .dc.off{background:var(--surface2);cursor:default;pointer-events:none;opacity:.5}
@@ -82,6 +82,7 @@ button{font-family:inherit;cursor:pointer}
 .task-chip{font-size:10px;border-radius:5px;padding:2px 6px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;transition:opacity .15s}
 .task-chip.done-chip{opacity:.38;text-decoration:line-through}
 .more-chip{font-size:9px;color:var(--text3);padding:1px 3px;font-weight:500}
+.task-meta{font-size:11px;color:var(--text3);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
 
 /* ── Overlay ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(2px)}
@@ -172,7 +173,8 @@ button{font-family:inherit;cursor:pointer}
 /* Responsive */
 @media(max-width:640px){
   .stats-grid{grid-template-columns:repeat(3,1fr)}
-  .dc{min-height:70px;padding:4px}
+  .cal-grid{grid-auto-rows:70px}
+  .dc{height:70px;padding:4px}
   .task-chip{display:none}
   .more-chip{display:none}
   .mobile-dots{display:flex}
@@ -237,6 +239,16 @@ button{font-family:inherit;cursor:pointer}
       <div class="form-group">
         <label>วันที่</label>
         <input type="date" id="dlgDate"/>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div class="form-group" style="flex:1;margin-bottom:12px">
+          <label>เวลา <span style="color:var(--text3);font-weight:400">(ถ้ามี)</span></label>
+          <input type="time" id="dlgTime"/>
+        </div>
+        <div class="form-group" style="flex:2;margin-bottom:12px">
+          <label>สถานที่ <span style="color:var(--text3);font-weight:400">(ถ้ามี)</span></label>
+          <input type="text" id="dlgLoc" placeholder="เช่น สตูดิโอ, ออนไลน์"/>
+        </div>
       </div>
       <div class="form-group">
         <label>รายละเอียดงาน</label>
@@ -528,7 +540,7 @@ function buildCal(){
         const namesStr=peList.map(pe=>pe.name).join('+');
         return`<div class="task-chip${t.done?' done-chip':''}"
           style="background:${lightBg(mainPe.dot)};color:${mainPe.dot}">
-          ${namesStr} – ${t.j}
+          ${t.time?t.time+' ':''}${namesStr} – ${t.j}
         </div>`;
       }).join('')}
       ${extra>0?`<div class="more-chip">+${extra} งาน</div>`:''}
@@ -584,6 +596,8 @@ function openDay(date){
   document.getElementById("dlgTitle").textContent=`${parseInt(d)} ${MTH_TH[parseInt(m)-1]} ${parseInt(yr)+543}`;
   document.getElementById("dlgDate").value=date;
   document.getElementById("dlgJob").value="";
+  document.getElementById("dlgTime").value="";
+  document.getElementById("dlgLoc").value="";
   if(selectedPeople.length===0&&people.length>0) selectedPeople=[people[0].id];
   buildPersonPicker();
   renderDlgTasks(date);
@@ -602,9 +616,10 @@ function renderDlgTasks(date){
     const mainPe=peList[0];
     const idx=tasks.indexOf(t);
     const badgesHtml=peList.map(pe=>`<span class="task-person-badge" style="background:${pe.dot};color:#fff">${pe.name}</span>`).join('');
+    const metaHtml=(t.time||t.loc)?`<div class="task-meta">${t.time?`${t.time}`:''}${t.time&&t.loc?' · ':''}${t.loc||''}</div>`:'';
     return`<div class="task-row" style="background:${lightBg(mainPe.dot,.1)}">
       <div class="task-badges">${badgesHtml}</div>
-      <span class="task-job${t.done?' done-text':''}">${t.j}</span>
+      <div style="flex:1;min-width:0"><span class="task-job${t.done?' done-text':''}">${t.j}</span>${metaHtml}</div>
       <button class="done-btn ${t.done?'is-done':'undone'}" onclick="toggleDone(${idx},'${date}')">
         ${t.done?'✓ เสร็จ':'เสร็จ?'}
       </button>
@@ -626,9 +641,13 @@ function saveTask(){
   const j=document.getElementById("dlgJob").value.trim();
   if(!date||!j){alert("กรุณากรอกวันที่และรายละเอียดงาน");return;}
   if(selectedPeople.length===0){alert("กรุณาเลือกผู้รับผิดชอบอย่างน้อย 1 คน");return;}
-  tasks.push({date,p:[...selectedPeople],j,done:false});
+  const time=document.getElementById("dlgTime").value;
+  const loc=document.getElementById("dlgLoc").value.trim();
+  tasks.push({date,p:[...selectedPeople],j,time,loc,done:false});
   save();
   document.getElementById("dlgJob").value="";
+  document.getElementById("dlgTime").value="";
+  document.getElementById("dlgLoc").value="";
   renderDlgTasks(date);buildStats();buildCal();
 }
 
