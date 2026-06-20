@@ -126,6 +126,10 @@ button{font-family:inherit;cursor:pointer}
 .done-btn.is-done{border-color:var(--green);background:var(--green);color:#fff}
 .del-task-btn{width:26px;height:26px;border-radius:50%;border:none;background:transparent;color:var(--text3);font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
 .del-task-btn:hover{background:#FEECEC;color:var(--red)}
+.edit-task-btn{width:26px;height:26px;border-radius:50%;border:none;background:transparent;color:var(--text3);font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.edit-task-btn:hover{background:#EFF6FF;color:var(--blue)}
+.edit-person-btn{padding:4px 10px;border-radius:var(--radius-pill);border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;font-weight:600;transition:all .15s;margin-right:4px}
+.edit-person-btn:hover{background:var(--surface2);border-color:var(--blue);color:var(--blue)}
 .add-section{border-top:1px solid var(--border);padding-top:12px;margin-top:4px}
 .add-section-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px}
 
@@ -237,7 +241,7 @@ button{font-family:inherit;cursor:pointer}
   <div class="modal-body">
     <div class="task-list" id="dlgTaskList"></div>
     <div class="add-section">
-      <div class="add-section-title">➕ เพิ่มงานใหม่</div>
+      <div class="add-section-title" id="addSectionTitle">➕ เพิ่มงานใหม่</div>
       <div class="form-group">
         <label>ผู้รับผิดชอบ <span style="color:var(--text3);font-weight:400">(เลือกได้หลายคน)</span></label>
         <div id="dlgPersonPicker" class="person-picker"></div>
@@ -280,8 +284,8 @@ button{font-family:inherit;cursor:pointer}
     </div>
   </div>
   <div class="modal-footer">
-    <button class="btn" onclick="closeModal('dayOverlay')">ยกเลิก</button>
-    <button class="btn btn-primary" onclick="saveTask()">บันทึกงาน</button>
+    <button class="btn" onclick="cancelTaskEdit()">ยกเลิก</button>
+    <button class="btn btn-primary" id="saveTaskBtn" onclick="saveTask()">บันทึกงาน</button>
   </div>
 </div>
 </div>
@@ -313,7 +317,7 @@ button{font-family:inherit;cursor:pointer}
   <div class="modal-body">
     <div class="people-list" id="peopleList"></div>
     <div class="divider"></div>
-    <div class="add-section-title" style="margin-bottom:10px">เพิ่มสมาชิกใหม่</div>
+    <div class="add-section-title" id="addPersonTitle" style="margin-bottom:10px">เพิ่มสมาชิกใหม่</div>
     <div class="form-group">
       <label>ชื่อ</label>
       <input type="text" id="newPersonName" placeholder="ชื่อสมาชิก" maxlength="20"/>
@@ -324,8 +328,9 @@ button{font-family:inherit;cursor:pointer}
     </div>
   </div>
   <div class="modal-footer">
+    <button class="btn" id="cancelPersonEditBtn" style="display:none" onclick="cancelPersonEdit()">ยกเลิกแก้ไข</button>
     <button class="btn" onclick="closeModal('teamOverlay')">ปิด</button>
-    <button class="btn btn-primary" onclick="addPerson()">เพิ่มสมาชิก</button>
+    <button class="btn btn-primary" id="addPersonBtn" onclick="addPerson()">เพิ่มสมาชิก</button>
   </div>
 </div>
 </div>
@@ -432,6 +437,9 @@ const curYear=new Date().getFullYear();
 let curFilter="all";
 let selectedColor=PALETTE[0];
 let selectedPeople=[];
+let editingTaskIdx=null;
+let editingPersonId=null;
+let currentDayModalDate=null;
 
 /* ── Storage (Firebase Realtime Database) ── */
 let dbReady=false;
@@ -615,6 +623,8 @@ function togglePickerPerson(pid,el){
 
 /* ── Day modal ── */
 function openDay(date){
+  currentDayModalDate=date;
+  editingTaskIdx=null;
   const [yr,m,d]=date.split("-");
   document.getElementById("dlgTitle").textContent=`${parseInt(d)} ${MTH_TH[parseInt(m)-1]} ${parseInt(yr)+543}`;
   document.getElementById("dlgDate").value=date;
@@ -623,6 +633,8 @@ function openDay(date){
   document.getElementById("dlgTimeHour").className="empty";
   document.getElementById("dlgTimeMin").value="00";
   document.getElementById("dlgLoc").value="";
+  document.getElementById("addSectionTitle").textContent="➕ เพิ่มงานใหม่";
+  document.getElementById("saveTaskBtn").textContent="บันทึกงาน";
   if(selectedPeople.length===0&&people.length>0) selectedPeople=[people[0].id];
   buildPersonPicker();
   renderDlgTasks(date);
@@ -648,9 +660,30 @@ function renderDlgTasks(date){
       <button class="done-btn ${t.done?'is-done':'undone'}" onclick="toggleDone(${idx},'${date}')">
         ${t.done?'✓ เสร็จ':'เสร็จ?'}
       </button>
+      <button class="edit-task-btn" onclick="startEditTask(${idx})" title="แก้ไขงาน">✏️</button>
       <button class="del-task-btn" onclick="delTask(${idx},'${date}')" title="ลบงาน">🗑</button>
     </div>`;
   }).join("");
+}
+function startEditTask(idx){
+  const t=tasks[idx];
+  editingTaskIdx=idx;
+  document.getElementById("dlgDate").value=t.date;
+  document.getElementById("dlgJob").value=t.j;
+  const parts=t.time?t.time.split(":"):[""," "];
+  document.getElementById("dlgTimeHour").value=parts[0]||"";
+  document.getElementById("dlgTimeHour").className=parts[0]?"":"empty";
+  document.getElementById("dlgTimeMin").value=parts[1]||"00";
+  document.getElementById("dlgLoc").value=t.loc||"";
+  selectedPeople=[...pArr(t)];
+  buildPersonPicker();
+  document.getElementById("addSectionTitle").textContent="✏️ แก้ไขงาน";
+  document.getElementById("saveTaskBtn").textContent="อัปเดตงาน";
+  document.querySelector(".add-section").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function cancelTaskEdit(){
+  editingTaskIdx=null;
+  closeModal("dayOverlay");
 }
 function toggleDone(idx,date){tasks[idx].done=!tasks[idx].done;save();renderDlgTasks(date);buildStats();buildCal();}
 function delTask(idx,date){
@@ -670,14 +703,22 @@ function saveTask(){
   const min=document.getElementById("dlgTimeMin").value;
   const time=h?`${h}:${min}`:"";
   const loc=document.getElementById("dlgLoc").value.trim();
-  tasks.push({date,p:[...selectedPeople],j,time,loc,done:false});
+  if(editingTaskIdx!==null){
+    tasks[editingTaskIdx]={...tasks[editingTaskIdx],date,p:[...selectedPeople],j,time,loc};
+    editingTaskIdx=null;
+    currentDayModalDate=date;
+  }else{
+    tasks.push({date,p:[...selectedPeople],j,time,loc,done:false});
+  }
   save();
   document.getElementById("dlgJob").value="";
   document.getElementById("dlgTimeHour").value="";
   document.getElementById("dlgTimeHour").className="empty";
   document.getElementById("dlgTimeMin").value="00";
   document.getElementById("dlgLoc").value="";
-  renderDlgTasks(date);buildStats();buildCal();
+  document.getElementById("addSectionTitle").textContent="➕ เพิ่มงานใหม่";
+  document.getElementById("saveTaskBtn").textContent="บันทึกงาน";
+  renderDlgTasks(currentDayModalDate);buildStats();buildCal();
 }
 
 /* ── Person modal ── */
@@ -731,9 +772,33 @@ function toggleDonePerson(idx,pid){tasks[idx].done=!tasks[idx].done;save();openP
 
 /* ── Team Manager ── */
 function openTeamManager(){
+  editingPersonId=null;
   renderPeopleList();
   renderColorGrid();
+  document.getElementById("addPersonTitle").textContent="เพิ่มสมาชิกใหม่";
+  document.getElementById("addPersonBtn").textContent="เพิ่มสมาชิก";
+  document.getElementById("cancelPersonEditBtn").style.display="none";
   openModal("teamOverlay");
+}
+function startEditPerson(pid){
+  const pe=getPerson(pid);
+  editingPersonId=pid;
+  document.getElementById("newPersonName").value=pe.name;
+  selectedColor=pe.dot;
+  renderColorGrid();
+  document.getElementById("addPersonTitle").textContent="✏️ แก้ไขสมาชิก";
+  document.getElementById("addPersonBtn").textContent="อัปเดต";
+  document.getElementById("cancelPersonEditBtn").style.display="inline-flex";
+  document.getElementById("newPersonName").focus();
+}
+function cancelPersonEdit(){
+  editingPersonId=null;
+  document.getElementById("newPersonName").value="";
+  selectedColor=PALETTE[0];
+  renderColorGrid();
+  document.getElementById("addPersonTitle").textContent="เพิ่มสมาชิกใหม่";
+  document.getElementById("addPersonBtn").textContent="เพิ่มสมาชิก";
+  document.getElementById("cancelPersonEditBtn").style.display="none";
 }
 function renderPeopleList(){
   const el=document.getElementById("peopleList");
@@ -743,6 +808,7 @@ function renderPeopleList(){
       <span class="people-item-dot" style="background:${p.dot}"></span>
       <span class="people-item-name">${p.name}</span>
       <span class="people-item-count">${cnt} งาน</span>
+      <button class="edit-person-btn" onclick="startEditPerson('${p.id}')">แก้ไข</button>
       <button class="del-person-btn" onclick="removePerson('${p.id}')"
         ${cnt>0?`title="มีงานอยู่ ${cnt} งาน"`:''}>ลบออก</button>
     </div>`;
@@ -766,13 +832,23 @@ function addPerson(){
   const nameEl=document.getElementById("newPersonName");
   const name=nameEl.value.trim();
   if(!name){nameEl.focus();return;}
-  if(people.find(p=>p.name.toLowerCase()===name.toLowerCase())){
-    alert("มีชื่อนี้อยู่แล้ว");return;
+  if(editingPersonId!==null){
+    const pe=people.find(p=>p.id===editingPersonId);
+    if(!pe){cancelPersonEdit();return;}
+    if(people.find(p=>p.id!==editingPersonId&&p.name.toLowerCase()===name.toLowerCase())){
+      alert("มีชื่อนี้อยู่แล้ว");return;
+    }
+    pe.name=name;pe.dot=selectedColor;
+    save();cancelPersonEdit();renderPeopleList();buildAll();
+  }else{
+    if(people.find(p=>p.name.toLowerCase()===name.toLowerCase())){
+      alert("มีชื่อนี้อยู่แล้ว");return;
+    }
+    const id="p_"+Date.now();
+    people.push({id,name,dot:selectedColor});
+    save();nameEl.value="";
+    renderPeopleList();buildAll();
   }
-  const id="p_"+Date.now();
-  people.push({id,name,dot:selectedColor});
-  save();nameEl.value="";
-  renderPeopleList();buildAll();
 }
 function removePerson(pid){
   const pe=getPerson(pid);
